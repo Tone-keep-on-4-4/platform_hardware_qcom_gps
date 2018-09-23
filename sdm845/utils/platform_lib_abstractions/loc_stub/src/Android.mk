@@ -20,10 +20,12 @@ LOCAL_SRC_FILES += \
         loc_stub_time.cpp
 
 LOCAL_CFLAGS += \
-     -fno-short-enums \
-     -D_ANDROID_ \
-     -std=c++11
-
+    -fno-short-enums \
+    -D_ANDROID_ \
+    -Wall \
+    -Werror \
+    -Wno-unused-parameter \
+    -std=c++11
 
 LOCAL_LDFLAGS += -Wl,--export-dynamic
 
@@ -41,8 +43,7 @@ LOCAL_COPY_HEADERS:= \
         ../include/loc_stub_time.h
 
 LOCAL_MODULE := libloc_stub
-LOCAL_MODULE_PATH_32 := $(TARGET_OUT_VENDOR)/lib
-LOCAL_MODULE_PATH_64 := $(TARGET_OUT_VENDOR)/lib64
+LOCAL_VENDOR_MODULE := true
 LOCAL_MODULE_TAGS := optional
 
 LOCAL_PRELINK_MODULE := false

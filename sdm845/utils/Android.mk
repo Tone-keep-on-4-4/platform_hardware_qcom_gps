@@ -30,8 +30,16 @@ LOCAL_SRC_FILES += \
 
 # Flag -std=c++11 is not accepted by compiler when LOCAL_CLANG is set to true
 LOCAL_CFLAGS += \
-     -fno-short-enums \
-     -D_ANDROID_
+    -fno-short-enums \
+    -D_ANDROID_ \
+    -Wall \
+    -Werror \
+    -Wno-macro-redefined \
+    -Wno-missing-braces \
+    -Wno-missing-field-initializers \
+    -Wno-null-conversion \
+    -Wno-unused-parameter \
+    -Wno-unused-variable
 
 ifeq ($(TARGET_BUILD_VARIANT),user)
    LOCAL_CFLAGS += -DTARGET_BUILD_VARIANT_USER
@@ -65,8 +73,7 @@ LOCAL_COPY_HEADERS:= \
    loc_gps.h
 
 LOCAL_MODULE := libgps.utils
-LOCAL_MODULE_PATH_32 := $(TARGET_OUT_VENDOR)/lib
-LOCAL_MODULE_PATH_64 := $(TARGET_OUT_VENDOR)/lib64
+LOCAL_VENDOR_MODULE := true
 LOCAL_MODULE_TAGS := optional
 
 LOCAL_PRELINK_MODULE := false

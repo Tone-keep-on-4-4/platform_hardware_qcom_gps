@@ -505,6 +505,7 @@ GnssAdapter::setConfigCommand()
             mApi(api) {}
         inline virtual void proc() const {
             if (ContextBase::mGps_conf.AGPS_CONFIG_INJECT) {
+                LocDualContext::injectFeatureConfig(mAdapter.getContext());
                 mApi.setSUPLVersion(mAdapter.convertSuplVersion(ContextBase::mGps_conf.SUPL_VER));
                 mApi.setLPPConfig(mAdapter.convertLppProfile(ContextBase::mGps_conf.LPP_PROFILE));
                 mApi.setAGLONASSProtocol(ContextBase::mGps_conf.A_GLONASS_POS_PROTOCOL_SELECT);
@@ -1871,17 +1872,7 @@ GnssAdapter::reportPosition(const UlpLocation& ulpLocation,
                             LocPosTechMask techMask)
 {
     bool reported = false;
-    if (LOC_SESS_FAILURE == status) {
-        Location invalidLocation = {};
-        invalidLocation.size = sizeof(Location);
-        for (auto it=mClientData.begin(); it != mClientData.end(); ++it) {
-            if (nullptr != it->second.trackingCb) {
-                it->second.trackingCb(invalidLocation);
-            }
-        }
-        reported = true;
-    }
-    // what's in the else if is... (line by line)
+    // what's in the if is... (line by line)
     // 1. this is a final fix; and
     //   1.1 it is a Satellite fix; or
     //   1.2 it is a sensor fix
@@ -1891,7 +1882,7 @@ GnssAdapter::reportPosition(const UlpLocation& ulpLocation,
     //   2.2.1 there is inaccuracy; and
     //   2.2.2 we care about inaccuracy; and
     //   2.2.3 the inaccuracy exceeds our tolerance
-    else if ((LOC_SESS_SUCCESS == status &&
+    if ((LOC_SESS_SUCCESS == status &&
               ((LOC_POS_TECH_MASK_SATELLITE |
                 LOC_POS_TECH_MASK_SENSORS   |
                 LOC_POS_TECH_MASK_HYBRID) &
@@ -1919,6 +1910,10 @@ GnssAdapter::reportPosition(const UlpLocation& ulpLocation,
             }
         }
         reported = true;
+    } else {
+        LOC_LOGI("%s: not reported. Status: %d, techMask: %d, flags %d, accuracy %f",
+                __func__, (int)status, (int)techMask, (int)ulpLocation.gpsLocation.flags,
+                (float)ulpLocation.gpsLocation.accuracy);
     }
 
     if (NMEA_PROVIDER_AP == ContextBase::mGps_conf.NMEA_PROVIDER && !mTrackingSessions.empty()) {
@@ -1972,38 +1967,51 @@ GnssAdapter::reportSvEvent(const GnssSvNotification& svNotify,
 void
 GnssAdapter::reportSv(GnssSvNotification& svNotify)
 {
-    if (mGnssSvIdUsedInPosAvail) {
-        int numSv = svNotify.count;
-        int16_t gnssSvId = 0;
-        uint64_t svUsedIdMask = 0;
-        for (int i=0; i < numSv; i++) {
-            gnssSvId = svNotify.gnssSvs[i].svId;
-            switch (svNotify.gnssSvs[i].type) {
-                case GNSS_SV_TYPE_GPS:
+    int numSv = svNotify.count;
+    int16_t gnssSvId = 0;
+    uint64_t svUsedIdMask = 0;
+    for (int i=0; i < numSv; i++) {
+        svUsedIdMask = 0;
+        gnssSvId = svNotify.gnssSvs[i].svId;
+        switch (svNotify.gnssSvs[i].type) {
+            case GNSS_SV_TYPE_GPS:
+                if (mGnssSvIdUsedInPosAvail) {
                     svUsedIdMask = mGnssSvIdUsedInPosition.gps_sv_used_ids_mask;
-                    break;
-                case GNSS_SV_TYPE_GLONASS:
+                }
+                break;
+            case GNSS_SV_TYPE_GLONASS:
+                if (mGnssSvIdUsedInPosAvail) {
                     svUsedIdMask = mGnssSvIdUsedInPosition.glo_sv_used_ids_mask;
-                    break;
-                case GNSS_SV_TYPE_BEIDOU:
+                }
+                break;
+            case GNSS_SV_TYPE_BEIDOU:
+                if (mGnssSvIdUsedInPosAvail) {
                     svUsedIdMask = mGnssSvIdUsedInPosition.bds_sv_used_ids_mask;
-                    break;
-                case GNSS_SV_TYPE_GALILEO:
+                }
+                break;
+            case GNSS_SV_TYPE_GALILEO:
+                if (mGnssSvIdUsedInPosAvail) {
                     svUsedIdMask = mGnssSvIdUsedInPosition.gal_sv_used_ids_mask;
-                    break;
-                case GNSS_SV_TYPE_QZSS:
+                }
+                break;
+            case GNSS_SV_TYPE_QZSS:
+                if (mGnssSvIdUsedInPosAvail) {
                     svUsedIdMask = mGnssSvIdUsedInPosition.qzss_sv_used_ids_mask;
-                    break;
-                default:
-                    svUsedIdMask = 0;
-                    break;
-            }
+                }
+                // QZSS SV id's need to reported as it is to framework, since
+                // framework expects it as it is. See GnssStatus.java.
+                // SV id passed to here by LocApi is 1-based.
+                svNotify.gnssSvs[i].svId += (QZSS_SV_PRN_MIN - 1);
+                break;
+            default:
+                svUsedIdMask = 0;
+                break;
+        }
 
-            // If SV ID was used in previous position fix, then set USED_IN_FIX
-            // flag, else clear the USED_IN_FIX flag.
-            if (svUsedIdMask & (1 << (gnssSvId - 1))) {
-                svNotify.gnssSvs[i].gnssSvOptionsMask |= GNSS_SV_OPTIONS_USED_IN_FIX_BIT;
-            }
+        // If SV ID was used in previous position fix, then set USED_IN_FIX
+        // flag, else clear the USED_IN_FIX flag.
+        if (svUsedIdMask & (1 << (gnssSvId - 1))) {
+            svNotify.gnssSvs[i].gnssSvOptionsMask |= GNSS_SV_OPTIONS_USED_IN_FIX_BIT;
         }
     }
 
@@ -2851,8 +2859,8 @@ bool GnssAdapter::getDebugReport(GnssDebugReport& r)
               (int64_t)(reports.mTimeAndClock.back().mGpsTowMs);
 
         r.mTime.timeUncertaintyNs =
-            (float)((reports.mTimeAndClock.back().mTimeUnc +
-                     reports.mTimeAndClock.back().mLeapSecUnc)*1000);
+                ((float)(reports.mTimeAndClock.back().mTimeUnc) +
+                 (float)(reports.mTimeAndClock.back().mLeapSecUnc))*1000.0f;
         r.mTime.frequencyUncertaintyNsPerSec =
             (float)(reports.mTimeAndClock.back().mClockFreqBiasUnc);
         LOC_LOGV("getDebugReport - timeestimate=%ld unc=%f frequnc=%f",

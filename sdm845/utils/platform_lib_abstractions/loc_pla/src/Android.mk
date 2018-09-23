@@ -21,9 +21,12 @@ LOCAL_SRC_FILES += \
         platform_lib_time.cpp
 
 LOCAL_CFLAGS += \
-     -fno-short-enums \
-     -D_ANDROID_ \
-     -std=c++11
+    -fno-short-enums \
+    -D_ANDROID_ \
+    -Wall \
+    -Werror \
+    -Wno-macro-redefined \
+    -std=c++11
 
 ## Includes
 LOCAL_C_INCLUDES:= \
@@ -42,8 +45,7 @@ LOCAL_COPY_HEADERS:= \
         ../include/platform_lib_time.h
 
 LOCAL_MODULE := libloc_pla
-LOCAL_MODULE_PATH_32 := $(TARGET_OUT_VENDOR)/lib
-LOCAL_MODULE_PATH_64 := $(TARGET_OUT_VENDOR)/lib64
+LOCAL_VENDOR_MODULE := true
 LOCAL_MODULE_TAGS := optional
 
 LOCAL_PRELINK_MODULE := false

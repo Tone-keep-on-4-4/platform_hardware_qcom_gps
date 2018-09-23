@@ -6,8 +6,7 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := liblocation_api
-LOCAL_MODULE_PATH_32 := $(TARGET_OUT_VENDOR)/lib
-LOCAL_MODULE_PATH_64 := $(TARGET_OUT_VENDOR)/lib64
+LOCAL_VENDOR_MODULE := true
 LOCAL_MODULE_TAGS := optional
 
 LOCAL_SHARED_LIBRARIES := \
@@ -22,7 +21,10 @@ LOCAL_SRC_FILES += \
     LocationAPIClientBase.cpp
 
 LOCAL_CFLAGS += \
-     -fno-short-enums
+    -fno-short-enums \
+    -Wall \
+    -Werror \
+    -Wno-unused-variable
 
 LOCAL_C_INCLUDES:= \
     $(TARGET_OUT_HEADERS)/gps.utils

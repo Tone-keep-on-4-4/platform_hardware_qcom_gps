@@ -6,8 +6,7 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := libloc_core
-LOCAL_MODULE_PATH_32 := $(TARGET_OUT_VENDOR)/lib
-LOCAL_MODULE_PATH_64 := $(TARGET_OUT_VENDOR)/lib64
+LOCAL_VENDOR_MODULE := true
 LOCAL_MODULE_TAGS := optional
 
 ifeq ($(TARGET_DEVICE),apq8026_lw)
@@ -34,8 +33,21 @@ LOCAL_SRC_FILES += \
     SystemStatus.cpp
 
 LOCAL_CFLAGS += \
-     -fno-short-enums \
-     -D_ANDROID_
+    -fno-short-enums \
+    -D_ANDROID_ \
+    -Wall \
+    -Werror \
+    -Wno-format \
+    -Wno-sign-compare \
+    -Wno-unneeded-internal-declaration \
+    -Wno-unused-const-variable \
+    -Wno-unused-parameter \
+    -Wno-delete-incomplete \
+    -Wno-switch
+
+LOCAL_CPPFLAGS += \
+    -Wno-overloaded-virtual \
+    -Wno-reorder
 
 LOCAL_C_INCLUDES:= \
     $(TARGET_OUT_HEADERS)/gps.utils \
